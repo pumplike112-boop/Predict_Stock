@@ -118,8 +118,8 @@ def load_model_and_scaler(ticker):
     
     return model, scaler
 
-def predict_one_month(data, ticker, days_ahead=20):
-    """Predict 1 month ahead (20 trading days) using iterative prediction"""
+def predict_trend(data, ticker):
+    """Predict 3 months ahead (60 trading days) directly"""
     lookback = 60
     
     try:
@@ -142,29 +142,17 @@ def predict_one_month(data, ticker, days_ahead=20):
         
         current_price = data['Close'].iloc[-1]
         
-        # Iterative prediction for 20 days
-        sequence = scaled_data[-lookback:].copy()
-        cumulative_return = 0
-        
-        for day in range(days_ahead):
-            # Predict next day return
-            input_seq = sequence.reshape(1, lookback, len(feature_cols))
-            daily_return = model.predict(input_seq, verbose=0)[0][0]
-            cumulative_return += daily_return
-            
-            # Update sequence: shift and add new predicted values
-            new_row = sequence[-1].copy()
-            new_row[0] = new_row[0] * (1 + daily_return * 0.5)  # Dampen effect to avoid explosion
-            sequence = np.vstack([sequence[1:], new_row])
+        # Direct prediction for 60 days
+        input_seq = scaled_data[-lookback:].reshape(1, lookback, len(feature_cols))
+        cumulative_return = model.predict(input_seq, verbose=0)[0][0]
         
         # Calculate final predicted price
         predicted_price = current_price * (1 + cumulative_return)
         change_pct = cumulative_return * 100
         
-        # Calculate confidence (decreases with prediction horizon)
-        base_confidence = 100 - abs(cumulative_return * 500)
-        time_decay = 0.7  # 70% confidence for 1-month prediction
-        confidence = min(95, max(40, base_confidence * time_decay))
+        # Calculate confidence
+        base_confidence = 100 - abs(cumulative_return * 200)
+        confidence = min(95, max(40, base_confidence))
         
         return predicted_price, change_pct, confidence
         
@@ -219,11 +207,11 @@ def main():
     # Process Thai market
     for ticker, name in markets["thai"].items():
         try:
-            print(f"🔄 กำลังประมวลผล {name} (ทำนาย 1 เดือนข้างหน้า)...")
+            print(f"🔄 กำลังประมวลผล {name} (ทำนาย 3 เดือนข้างหน้า)...")
             data = fetch_market_data(ticker)
             current_price = data['Close'].iloc[-1]
             
-            predicted_price, change_pct, confidence = predict_one_month(data, ticker, days_ahead=20)
+            predicted_price, change_pct, confidence = predict_trend(data, ticker)
             
             predictions["thai"][name] = {
                 "current": current_price,
@@ -241,11 +229,11 @@ def main():
     us_temp = {}
     for ticker, name in markets["us"].items():
         try:
-            print(f"🔄 กำลังประมวลผล {name} (ทำนาย 1 เดือนข้างหน้า)...")
+            print(f"🔄 กำลังประมวลผล {name} (ทำนาย 3 เดือนข้างหน้า)...")
             data = fetch_market_data(ticker)
             current_price = data['Close'].iloc[-1]
             
-            predicted_price, change_pct, confidence = predict_one_month(data, ticker, days_ahead=20)
+            predicted_price, change_pct, confidence = predict_trend(data, ticker)
             
             us_temp[name] = {
                 "current": current_price,
@@ -328,7 +316,7 @@ def main():
     
     # Build Discord Embed
     embed = {
-        "title": "🤖 การทำนายตลาดหุ้นด้วย AI - 1 เดือนข้างหน้า (20 วันทำการ)",
+        "title": "🤖 การทำนายตลาดหุ้นด้วย AI - 3 เดือนข้างหน้า (60 วันทำการ)",
         "description": (f"**โมเดล Deep Learning LSTM** | Bidirectional Neural Network\n"
                        f"**แนวโน้มตลาดโดยรวม:** {sentiment}\n"
                        f"**การเปลี่ยนแปลงเฉลี่ย:** `{avg_change:+.2f}%`"),
@@ -364,7 +352,7 @@ def main():
             trend_text = "แนวโน้มขาลงแรง"
         
         value = (f"{change_indicator} **ราคาปัจจุบัน:** `{data['current']:,.2f} บาท`\n"
-                f"🎯 **ราคาที่คาดการณ์ (1 เดือน):** `{data['predicted']:,.2f} บาท`\n"
+                f"🎯 **ราคาที่คาดการณ์ (3 เดือน):** `{data['predicted']:,.2f} บาท`\n"
                 f"💹 **การเปลี่ยนแปลง:** `{data['change_pct']:+.2f}%` {data['trend']}\n"
                 f"🎲 **ความมั่นใจ:** `{data['confidence']:.0f}%`\n"
                 f"📊 **{trend_text}**")
