@@ -95,12 +95,12 @@ def create_advanced_features(data):
     
     return df.dropna()
 
-def prepare_training_data(data, lookback=60):
-    """Prepare data for LSTM training - predict percentage return instead of price"""
+def prepare_training_data(data, lookback=60, predict_horizon=60):
+    """Prepare data for LSTM training - predict percentage return directly for horizon"""
     df = create_advanced_features(data)
     
-    # Calculate percentage return (target variable)
-    df['Return'] = df['Close'].pct_change().shift(-1)  # Next day return
+    # Calculate percentage return (target variable) over the prediction horizon
+    df['Return'] = df['Close'].pct_change(periods=predict_horizon).shift(-predict_horizon)
     df = df.dropna()
     
     # Select features
@@ -154,7 +154,7 @@ def build_lstm_model(input_shape):
     model.compile(optimizer=Adam(learning_rate=0.001), loss='mse', metrics=['mae'])
     return model
 
-def train_and_save_model(ticker, name, lookback=60):
+def train_and_save_model(ticker, name, lookback=60, predict_horizon=60):
     """Train model and save it with scaler"""
     print(f"\n{'='*60}")
     print(f"🚀 เริ่มเทรนโมเดลสำหรับ {name} ({ticker})")
@@ -165,8 +165,8 @@ def train_and_save_model(ticker, name, lookback=60):
         data = fetch_market_data(ticker, period="10y")
         
         # Prepare data
-        print("🔧 กำลังเตรียมข้อมูลและสร้าง features...")
-        X_train, y_train, X_val, y_val, scaler = prepare_training_data(data, lookback)
+        print(f"🔧 กำลังเตรียมข้อมูลสำหรับเป้าหมาย {predict_horizon} วัน (3 เดือน)...")
+        X_train, y_train, X_val, y_val, scaler = prepare_training_data(data, lookback, predict_horizon)
         
         print(f"📊 ข้อมูล Training: {len(X_train)} samples")
         print(f"📊 ข้อมูล Validation: {len(X_val)} samples")
