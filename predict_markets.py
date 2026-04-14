@@ -167,7 +167,7 @@ def predict_trend(data, ticker):
 
 def get_trend_emoji(change_pct):
     """Return trend emoji based on percentage change"""
-    return "📈" if change_pct > 0 else "📉"
+    return "▲" if change_pct > 0 else "▼"
 
 def send_discord_webhook(webhook_url, embed_data):
     """Send formatted embed to Discord with error handling"""
@@ -220,7 +220,7 @@ def main():
                 "trend": get_trend_emoji(change_pct),
                 "confidence": confidence
             }
-            print(f"✅ {name}: {current_price:.2f} → {predicted_price:.2f} ({change_pct:+.2f}%) [ความมั่นใจ: {confidence:.0f}%]")
+            print(f"✅ {name}: {current_price:.2f} -> {predicted_price:.2f} ({change_pct:+.2f}%) [ความมั่นใจ: {confidence:.0f}%]")
         except Exception as e:
             print(f"❌ ไม่สามารถประมวลผล {name}: {str(e)}")
             continue
@@ -242,7 +242,7 @@ def main():
                 "trend": get_trend_emoji(change_pct),
                 "confidence": confidence
             }
-            print(f"✅ {name}: {current_price:.2f} → {predicted_price:.2f} ({change_pct:+.2f}%) [ความมั่นใจ: {confidence:.0f}%]")
+            print(f"✅ {name}: {current_price:.2f} -> {predicted_price:.2f} ({change_pct:+.2f}%) [ความมั่นใจ: {confidence:.0f}%]")
         except Exception as e:
             print(f"❌ ไม่สามารถประมวลผล {name}: {str(e)}")
             continue
@@ -304,19 +304,19 @@ def main():
     
     # Sentiment description in Thai
     if avg_change > 3:
-        sentiment = "แนวโน้มขาขึ้นแรง 🚀🐂"
+        sentiment = "แนวโน้มขาขึ้นแรง ▲▲"
     elif avg_change > 1:
-        sentiment = "แนวโน้มขาขึ้น 📈🐂"
+        sentiment = "แนวโน้มขาขึ้น ▲"
     elif avg_change > -1:
-        sentiment = "แนวโน้มปานกลาง ⚖️"
+        sentiment = "แนวโน้มปานกลาง ─"
     elif avg_change > -3:
-        sentiment = "แนวโน้มขาลง 📉🐻"
+        sentiment = "แนวโน้มขาลง ▼"
     else:
-        sentiment = "แนวโน้มขาลงแรง 💥🐻"
+        sentiment = "แนวโน้มขาลงแรง ▼▼"
     
     # Build Discord Embed
     embed = {
-        "title": "🤖 การทำนายตลาดหุ้นด้วย AI - 3 เดือนข้างหน้า (60 วันทำการ)",
+        "title": "AI การทำนายตลาดหุ้น - 3 เดือนข้างหน้า (60 วันทำการ)",
         "description": (f"**โมเดล Deep Learning LSTM** | Bidirectional Neural Network\n"
                        f"**แนวโน้มตลาดโดยรวม:** {sentiment}\n"
                        f"**การเปลี่ยนแปลงเฉลี่ย:** `{avg_change:+.2f}%`"),
@@ -324,7 +324,7 @@ def main():
         "timestamp": datetime.utcnow().isoformat(),
         "fields": [],
         "footer": {
-            "text": "⚡ ขับเคลื่อนด้วย LSTM + 14 ตัวชี้วัดทางเทคนิค | ⚠️ ไม่ใช่คำแนะนำทางการเงิน"
+            "text": "ขับเคลื่อนด้วย LSTM + 14 ตัวชี้วัดทางเทคนิค | [!] ไม่ใช่คำแนะนำทางการเงิน"
         },
         "thumbnail": {
             "url": "https://cdn-icons-png.flaticon.com/512/2936/2936719.png"
@@ -333,13 +333,13 @@ def main():
     
     # Thai Market Section
     embed["fields"].append({
-        "name": "🇹🇭 **ตลาดหุ้นไทย**",
+        "name": "[TH] ตลาดหุ้นไทย",
         "value": "```diff\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n```",
         "inline": False
     })
     
     for name, data in predictions["thai"].items():
-        change_indicator = "🟢" if data['change_pct'] > 0 else "🔴"
+        change_indicator = "[+]" if data['change_pct'] > 0 else "[-]"
         
         # Simple trend description
         if data['change_pct'] > 3:
@@ -351,26 +351,31 @@ def main():
         else:
             trend_text = "แนวโน้มขาลงแรง"
         
-        value = (f"{change_indicator} **ราคาปัจจุบัน:** `{data['current']:,.2f} บาท`\n"
-                f"🎯 **ราคาที่คาดการณ์ (3 เดือน):** `{data['predicted']:,.2f} บาท`\n"
-                f"💹 **การเปลี่ยนแปลง:** `{data['change_pct']:+.2f}%` {data['trend']}\n"
-                f"🎲 **ความมั่นใจ:** `{data['confidence']:.0f}%`\n"
-                f"📊 **{trend_text}**")
+        # Setup correct unit (จุด for index, บาท for stocks)
+        unit = "จุด" if "ดัชนี" in name else "บาท"
+        price_label = "ระดับปัจจุบัน" if "ดัชนี" in name else "ราคาปัจจุบัน"
+        predict_label = "คาดการณ์ (3 เดือน)" if "ดัชนี" in name else "ราคาที่คาดการณ์ (3 เดือน)"
+        
+        value = (f"{change_indicator} **{price_label}:** `{data['current']:,.2f} {unit}`\n"
+                f"[>] **{predict_label}:** `{data['predicted']:,.2f} {unit}`\n"
+                f"[%] **การเปลี่ยนแปลง:** `{data['change_pct']:+.2f}%` {data['trend']}\n"
+                f"[~] **ความมั่นใจ:** `{data['confidence']:.0f}%`\n"
+                f"[=] **{trend_text}**")
         embed["fields"].append({
-            "name": f"📌 {name}",
+            "name": f">> {name}",
             "value": value,
             "inline": False
         })
     
     # US Markets Section (Combined)
     embed["fields"].append({
-        "name": "\n🇺🇸 **ตลาดหุ้นสหรัฐอเมริกา**",
+        "name": "\n[US] **ตลาดหุ้นสหรัฐอเมริกา**",
         "value": "```diff\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n```",
         "inline": False
     })
     
     # Combined US market summary
-    change_indicator = "🟢" if avg_change_pct > 0 else "🔴"
+    change_indicator = "[+]" if avg_change_pct > 0 else "[-]"
     
     if avg_change_pct > 3:
         trend_text = "แนวโน้มขาขึ้นแรง"
@@ -382,14 +387,14 @@ def main():
         trend_text = "แนวโน้มขาลงแรง"
     
     us_value = (f"{change_indicator} **{trend_text}** `{avg_change_pct:+.2f}%` {get_trend_emoji(avg_change_pct)}\n"
-                f"🎲 **ความมั่นใจ:** `{avg_confidence:.0f}%`\n\n"
-                f"� **S&P 500:** `{sp500_data['change_pct']:+.2f}%`\n"
-                f"   ปัจจุบัน: `${sp500_data['current']:,.2f}` → คาดการณ์: `${sp500_data['predicted']:,.2f}`\n\n"
-                f"📊 **Dow Jones:** `{dji_data['change_pct']:+.2f}%`\n"
-                f"   ปัจจุบัน: `${dji_data['current']:,.2f}` → คาดการณ์: `${dji_data['predicted']:,.2f}`")
+                f"[~] **ความมั่นใจ:** `{avg_confidence:.0f}%`\n\n"
+                f" **S&P 500:** `{sp500_data['change_pct']:+.2f}%`\n"
+                f"   ปัจจุบัน: `${sp500_data['current']:,.2f}` -> คาดการณ์: `${sp500_data['predicted']:,.2f}`\n\n"
+                f"[*] **Dow Jones:** `{dji_data['change_pct']:+.2f}%`\n"
+                f"   ปัจจุบัน: `${dji_data['current']:,.2f}` -> คาดการณ์: `${dji_data['predicted']:,.2f}`")
     
     embed["fields"].append({
-        "name": f"� ตลาดหุ้นสหรัฐ (S&P 500 + Dow Jones)",
+        "name": f" ตลาดหุ้นสหรัฐ (S&P 500 + Dow Jones)",
         "value": us_value,
         "inline": False
     })
